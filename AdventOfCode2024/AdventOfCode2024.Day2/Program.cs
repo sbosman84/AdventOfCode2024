@@ -9,59 +9,14 @@ var stopwatch = new Stopwatch();
 stopwatch.Start();
 
 int safeReportCount = 0;
+int safeReportCountPart2 = 0;
 
-foreach (var line in lines)
-{    
-    var levels = line.Split(' ').Select(int.Parse).ToList();
-    bool unsafeReport = false;
-    bool isIncreasing = true;
-    bool isDecreasing = true;
-
-    for (int i = 1; i < levels.Count; i++)
-    {
-        int diff = levels[i] - levels[i - 1];
-        int absDiff = Math.Abs(diff);
-        if (absDiff < 1 || absDiff > 3)
-        {
-            unsafeReport = true;
-            break;
-        }
-
-        if (diff > 0)
-        {            
-            isDecreasing = false;
-        }
-        if (diff < 0)
-        {            
-            isIncreasing = false;
-        }
-    }
-
-    if(unsafeReport)
-    {
-        Console.WriteLine($"Processing line: {line} - UNSAFE (differs NOT by at least one and at most three.)");
-        continue;
-    }
-
-    if ((isDecreasing == false && isIncreasing == false))
-    {
-        Console.WriteLine($"Processing line: {line} - UNSAFE (both increasing and decreasing.)");
-        continue;
-    }
-
-    Console.WriteLine($"Processing line: {line} - SAFE");
-    safeReportCount++;
-}
-
-Console.WriteLine($"Part 1 - Number of safe reports: {safeReportCount}");
-
-safeReportCount = 0;
 foreach (var line in lines)
 {
     var levels = line.Split(' ').Select(int.Parse).ToList();
     bool isSafe = false;
+    bool isSafePart2 = false;
 
-    // Check if the original list is safe
     if (IsSafe(levels))
     {
         isSafe = true;
@@ -76,7 +31,7 @@ foreach (var line in lines)
             if (IsSafe(modifiedLevels))
             {
                 Console.WriteLine($"Remove item at index: {i} with value {levels[i]} to make the list safe.");
-                isSafe = true;
+                isSafePart2 = true;
                 break;
             }
         }
@@ -85,7 +40,12 @@ foreach (var line in lines)
     if (isSafe)
     {
         Console.WriteLine($"Processing line: {line} - SAFE");
-        safeReportCount++;
+        safeReportCount++;        
+    }
+    else if(isSafePart2)
+    {
+        Console.WriteLine($"Processing line: {line} - SAFE (Only in Part 2)");
+        safeReportCountPart2++;
     }
     else
     {
@@ -93,7 +53,8 @@ foreach (var line in lines)
     }
 }
 
-Console.WriteLine($"Part 2 - Number of safe reports: {safeReportCount}");
+Console.WriteLine($"Part 1 - Number of safe reports: {safeReportCount}");
+Console.WriteLine($"Part 2 - Number of safe reports: {safeReportCount + safeReportCountPart2}");
 
 stopwatch.Stop();
 Console.WriteLine($"Calculation performed in: {stopwatch.ElapsedMilliseconds} ms");
