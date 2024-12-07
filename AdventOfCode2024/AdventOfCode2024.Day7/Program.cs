@@ -17,21 +17,17 @@ foreach (var line in lines)
 
     long testValue = long.Parse(parts[0].Trim());
     var numberStrings = parts[1].Trim().Split(' ');
-    var numbers = Array.ConvertAll(numberStrings, long.Parse);
-
-    // Generate all possible combinations of '+' and '*' operators
-    int operatorCount = numbers.Length - 1;
-    int totalCombinations = 1 << operatorCount;
+    var numbers = Array.ConvertAll(numberStrings, long.Parse);        
 
     // Part 1: Using only '+' and '*'
-    bool equationCanBeTruePart1 = EvaluateEquations(numbers, operatorCount, testValue, operators: 2);
+    bool equationCanBeTruePart1 = EvaluateEquations(numbers, testValue, operators: 2);
     if (equationCanBeTruePart1)
     {
         totalCalibrationResultPart1 += testValue;
     }
 
     // Part 2: Including concatenation '||' operator
-    bool equationCanBeTruePart2 = EvaluateEquations(numbers, operatorCount, testValue, operators: 3);
+    bool equationCanBeTruePart2 = EvaluateEquations(numbers, testValue, operators: 3);
     if (equationCanBeTruePart2)
     {
         totalCalibrationResultPart2 += testValue;
@@ -45,8 +41,10 @@ stopwatch.Stop();
 Console.WriteLine($"Calculation performed in: {stopwatch.ElapsedMilliseconds} ms");
 Console.ReadKey();
 
-static bool EvaluateEquations(long[] numbers, int operatorCount, long testValue, int operators)
+static bool EvaluateEquations(long[] numbers, long testValue, int operators)
 {
+    // Generate all possible combinations of '+', '*', '||' operators
+    int operatorCount = numbers.Length - 1;
     int totalCombinations = (int)Math.Pow(operators, operatorCount);
 
     for (int combination = 0; combination < totalCombinations; combination++)
