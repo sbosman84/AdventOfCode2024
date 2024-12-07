@@ -39,92 +39,163 @@ if(startingDirection == 'X')
     return;
 }
 
-var posititons = CalculateNumberOfPositionsForRoute(grid, '^', startRow, startCol, startingDirection);
+var (uniquePositionsCount, obstructionPositions) = CalculateNumberOfPositionsForRoute(grid, startingDirection, startRow, startCol, startingDirection);
 
-Console.WriteLine($"Guard finished the route with {posititons} unique positions!");
+Console.WriteLine($"Guard finished the route with {uniquePositionsCount} unique positions!");
+Console.WriteLine($"Found {obstructionPositions.Count} obstruction positions!");
 
 stopwatch.Stop();
 Console.WriteLine($"Calculation performed in: {stopwatch.ElapsedMilliseconds} ms");
 Console.ReadKey();
 
-static int CalculateNumberOfPositionsForRoute(char[,] grid, char currentDirection, int startX, int startY, char startingDirection)
+static (int uniquePositionsCount, HashSet<(int row, int col)> obstructionPositions) CalculateNumberOfPositionsForRoute(
+    char[,] grid, char currentDirection, int startX, int startY, char startingDirection)
 {
     var uniquePositions = new HashSet<(int row, int col)>();
+    var obstructionPositions = new HashSet<(int row, int col)>();
     var directions = new Dictionary<char, (int, int)>
     {
         ['^'] = (-1, 0), // up
-        ['>'] = (0, 1), // right
-        ['v'] = (1, 0), // down
-        ['<'] = (0, -1) // left
+        ['>'] = (0, 1),  // right
+        ['v'] = (1, 0),  // down
+        ['<'] = (0, -1)  // left
     };
 
-    int rowCount = grid.GetLength(0);  
+    int rowCount = grid.GetLength(0);
     int colCount = grid.GetLength(1);
 
-    int row = startX;   
+    int row = startX;
     int col = startY;
+
+    var visitedStates = new HashSet<(int row, int col, char direction)>();
+    bool isLoopDetected = false;
 
     while (true)
     {
-        //First of all don't forget to add the current position to the unique positions
+        // Add the current position to unique positions
         uniquePositions.Add((row, col));
 
-        //Then itterate through the route
-        if (ExecuteStep(grid, ref currentDirection, directions, rowCount, colCount, ref row, ref col, startingDirection, ref uniquePositions))
+        // Record the current state (position and direction)
+        if (visitedStates.Contains((row, col, currentDirection)))
         {
+            isLoopDetected = true;
             break;
-        };
-    }
+        }
+        visitedStates.Add((row, col, currentDirection));
 
-    static bool ExecuteStep(char[,] grid, ref char currentDirection, Dictionary<char, (int, int)> directions, int rowCount, int colCount, ref int row, ref int col, char startingDirection, ref HashSet<(int row, int col)> uniquePositions)
-    {
+        // Calculate next position
         var nextRowPosition = row + directions[currentDirection].Item1;
         var nextColPosition = col + directions[currentDirection].Item2;
 
         if (!IsInBounds(nextRowPosition, nextColPosition, rowCount, colCount))
-        {            
-            Console.WriteLine("Guard leaves the mapped area!");
-            return true;
+        {
+            // Guard leaves the mapped area
+            break;
         }
 
         char nextCell = grid[nextRowPosition, nextColPosition];
-        if (nextCell == '.' || nextCell == startingDirection)
-        {            
+        if (nextCell == '.' || nextCell == '^' || nextCell == '>' || nextCell == 'v' || nextCell == '<')
+        {
             row = nextRowPosition;
             col = nextColPosition;
-
-            uniquePositions.Add((row, col));
         }
         else if (nextCell == '#')
         {
-            switch (currentDirection)
-            {
-                case '^':
-                    currentDirection = '>';
-                    break;
-                case '>':
-                    currentDirection = 'v';
-                    break;
-                case 'v':
-                    currentDirection = '<';
-                    break;
-                case '<':
-                    currentDirection = '^';
-                    break;
-            }
-
-            Console.WriteLine($"New direction: {currentDirection} at position: {row}, {col}");
-            ExecuteStep(grid, ref currentDirection, directions, rowCount, colCount, ref row, ref col, startingDirection, ref uniquePositions);
+            // Rotate right
+            currentDirection = RotateRight(currentDirection);
         }
         else
         {
-            Console.WriteLine($"Strange character on the route: {nextCell}!");            
-        }        
-
-        return false;
+            // Unexpected character
+            break;
+        }
     }
 
-    return uniquePositions.Count;
+    // Identify positions where placing an obstruction would cause the guard to get stuck in a loop
+    for (int r = 0; r < rowCount; r++)
+    {
+        for (int c = 0; c < colCount; c++)
+        {
+            if (grid[r, c] == '.' && !(r == startX && c == startY))
+            {
+                // Place an obstruction at the current position
+                grid[r, c] = '#';
+
+                // Simulate the guard's movement with the obstruction
+                if (DoesObstructionCauseLoop(grid, startX, startY, startingDirection, directions))
+                {
+                    obstructionPositions.Add((r, c));
+                }
+
+                // Remove the obstruction
+                grid[r, c] = '.';
+            }
+        }
+    }
+
+    return (uniquePositions.Count, obstructionPositions);
+}
+
+static bool DoesObstructionCauseLoop(char[,] grid, int startRow, int startCol, char startingDirection, Dictionary<char, (int, int)> directions)
+{
+    int rowCount = grid.GetLength(0);
+    int colCount = grid.GetLength(1);
+    var visitedStates = new HashSet<(int row, int col, char direction)>();
+    int row = startRow;
+    int col = startCol;
+    char currentDirection = startingDirection;
+
+    while (true)
+    {
+        if (visitedStates.Contains((row, col, currentDirection)))
+        {
+            // Loop detected
+            return true;
+        }
+        visitedStates.Add((row, col, currentDirection));
+
+        // Calculate next position
+        int nextRow = row + directions[currentDirection].Item1;
+        int nextCol = col + directions[currentDirection].Item2;
+
+        if (!IsInBounds(nextRow, nextCol, rowCount, colCount))
+        {
+            // Guard leaves the mapped area
+            break;
+        }
+
+        char nextCell = grid[nextRow, nextCol];
+        if (nextCell == '.' || nextCell == '^' || nextCell == '>' || nextCell == 'v' || nextCell == '<')
+        {
+            // Move forward
+            row = nextRow;
+            col = nextCol;
+        }
+        else if (nextCell == '#')
+        {
+            // Rotate right
+            currentDirection = RotateRight(currentDirection);
+        }
+        else
+        {
+            // Unexpected character
+            break;
+        }
+    }
+
+    return false; // No loop detected
+}
+
+static char RotateRight(char direction)
+{
+    return direction switch
+    {
+        '^' => '>',
+        '>' => 'v',
+        'v' => '<',
+        '<' => '^',
+        _ => direction
+    };
 }
 
 static bool IsInBounds(int row, int col, int rowCount, int colCount)
